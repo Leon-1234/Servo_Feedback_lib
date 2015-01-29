@@ -19,7 +19,7 @@
  
  /* 
  This Servo Library is modified for adding Servo Position Feedback support.
- Copyright (c) 2015 Leon. All Rights Reserved.    
+ No Copyright Infringement intended.   
  
   This library is free software; you can redistribute it and/or
  modify it under the terms of the GNU Lesser General Public
