@@ -273,14 +273,6 @@ uint8_t Servo::attach(int pin)
   return this->attach(pin, MIN_PULSE_WIDTH, MAX_PULSE_WIDTH);
 }
 
-uint8_t Servo::attach(int pin, int feed)
-{
-  pinMode(feed, INPUT);
-  _feed = feed;
-  return this->attach(pin, MIN_PULSE_WIDTH, MAX_PULSE_WIDTH);
-  
-}
-
 uint8_t Servo::attach(int pin, int min, int max)
 {
   if(this->servoIndex < MAX_SERVOS ) {
@@ -349,6 +341,13 @@ int Servo::getPos() {           //Takes Servo Feedback and filters the output.
 	return inDeg;
 	
 
+}
+
+void Servo::setFeed(int pin) {
+
+    pinMode(pin, INPUT);
+    _feed = pin;
+	
 }
 
 int Servo::read() // return the value as degrees

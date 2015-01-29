@@ -11,7 +11,8 @@ int feedback;
 void setup() {
   
    Serial.begin(9600);
-   servo1.attach(servo1_pin, servo1_feed);
+   servo1.attach(servo1_pin);
+   servo1.setFeed(servo1_feed);
    servo2.attach(servo2_pin);
    
 }

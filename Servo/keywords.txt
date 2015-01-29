@@ -18,7 +18,8 @@ read	KEYWORD2
 attached	KEYWORD2
 writeMicroseconds	KEYWORD2
 readMicroseconds	KEYWORD2
-getPos  KEYWORD2
+getPos	KEYWORD2
+setFeed KEYWORD2
 
 #######################################
 # Constants (LITERAL1)
