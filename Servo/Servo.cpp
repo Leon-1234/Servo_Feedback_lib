@@ -18,13 +18,10 @@
  */
  
  /* 
- This Servo Library is modified for adding Servo Position Feedback support.
- No Copyright Infringement intended.   
- 
-  This library is free software; you can redistribute it and/or
- modify it under the terms of the GNU Lesser General Public
- License as published by the Free Software Foundation; either
- version 2.1 of the License, or (at your option) any later version.
+ ARDUINO SERVO LIBRARY MODIFIED ON 2015 BY LEON FOR ADDED SUPPORT OF POSTION FEEDBACK AND SPEED CONTROL.
+ No Copyright Infringement Intended.
+
+ This modified library is redistributed in hope that it will be useful but without any Warranties. All above limitations apply. 
  
  */
 
@@ -41,18 +38,17 @@
  Servo - Class for manipulating servo motors connected to Arduino pins.
  
  
- attach(pin )  - Attaches a servo motor to an i/o pin.
- attach(pin, feed)  -Attaches a servo motor to an i/o pin and sets its position feedback to another analog input pin.
- attach(pin, min, max  ) - Attaches to a pin setting min and max values in microseconds
- default min is 544, max is 2400  
- 
- write()     - Sets the servo angle in degrees.  (invalid angle that is valid as pulse in microseconds is treated as microseconds)
- writeMicroseconds() - Sets the servo pulse width in microseconds 
- read()      - Gets the last written servo pulse width as an angle between 0 and 180. 
- readMicroseconds()   - Gets the last written servo pulse width in microseconds. (was read_us() in first release)
- attached()  - Returns true if there is a servo attached. 
- detach()    - Stops an attached servos from pulsing its i/o pin.
- getPos()    - Gets position feedback from a servo's internal potentiometer and returns a output in degrees.
+ attach(pin )               - Attaches a servo motor to an i/o pin.
+ attach(pin, min, max  )    - Attaches to a pin setting min and max values in microseconds //default min is 544, max is 2400  
+ setFeed(pin)               - Sets a servo position feedback pin on any analog pin.
+ setFeed(pin, min, max)     - Sets a servo position feedback pin on any analog pin and sets the minimum and maximum values on the internal potentiometer.
+ write()                    - Sets the servo angle in degrees.  (invalid angle that is valid as pulse in microseconds is treated as microseconds)
+ writeMicroseconds()        - Sets the servo pulse width in microseconds 
+ read()                     - Gets the last written servo pulse width as an angle between 0 and 180. 
+ readMicroseconds()         - Gets the last written servo pulse width in microseconds. (was read_us() in first release)
+ attached()                 - Returns true if there is a servo attached. 
+ detach()                   - Stops an attached servos from pulsing its i/o pin.
+ getPos()                   - Gets position feedback from a servo's internal potentiometer and returns a output in degrees.
  
 */
 
@@ -66,14 +62,15 @@
 
 
 #define TRIM_DURATION       2                               // compensation ticks to trim adjust for digitalWrite delays // 12 August 2009
-
+#define MAX_FEED_DEFAULT 472
+#define MIN_FEED_DEFAULT 101
 //#define NBR_TIMERS        (MAX_SERVOS / SERVOS_PER_TIMER)
 
 static servo_t servos[MAX_SERVOS];                          // static array of servo structures
 static volatile int8_t Channel[_Nbr_16timers ];             // counter for the servo being pulsed for each timer (or -1 if refresh interval)
 
 uint8_t ServoCount = 0;                                     // the total number of attached servos
-int _feed;
+
 
 
 
@@ -85,6 +82,7 @@ int _feed;
 
 #define SERVO_MIN() (MIN_PULSE_WIDTH - this->min * 4)  // minimum value in uS for this servo
 #define SERVO_MAX() (MAX_PULSE_WIDTH - this->max * 4)  // maximum value in uS for this servo 
+
 
 /************ static functions common to all instances ***********************/
 
@@ -331,22 +329,43 @@ void Servo::writeMicroseconds(int value)
   } 
 }
 
-int Servo::getPos() {           //Takes Servo Feedback and filters the output.
+int Servo::getPos() {           //Takes Servo Feedback and filters the output as degrees.
 
-	int inFeed, inDeg, filteredVal;
-	inFeed = analogRead(_feed);
-	constrain(inFeed, 100, 472);
-	inDeg = map(inFeed, 100, 472, 0, 180);
-	constrain(inDeg,0,180);
-	return inDeg;
+	int inFeed;
+    if( (this->servoIndex < MAX_SERVOS) )   // ensure channel is valid
+    { 
+	  inFeed = analogRead(servos[this->servoIndex].Feed.feedPin.nbr);
+	  constrain(inFeed, servos[this->servoIndex].Feed.minFeed, servos[this->servoIndex].Feed.maxFeed);
+	  inFeed = map(inFeed, servos[this->servoIndex].Feed.minFeed, servos[this->servoIndex].Feed.maxFeed, 0, 180);
+	  constrain(inFeed,0,180);
+      servos[this->servoIndex].Feed.fdvalue = inFeed;
+	  return servos[this->servoIndex].Feed.fdvalue;
+	}
 	
 
 }
 
 void Servo::setFeed(int pin) {
+    
+	if(this->servoIndex < MAX_SERVOS ) {
+       pinMode(pin, INPUT);
+       servos[this->servoIndex].Feed.feedPin.nbr = pin;
+	   servos[this->servoIndex].Feed.feedPin.isActive = true;
+	   servos[this->servoIndex].Feed.maxFeed = MAX_FEED_DEFAULT;
+	   servos[this->servoIndex].Feed.minFeed = MIN_FEED_DEFAULT;
+    }
+	
+}
 
-    pinMode(pin, INPUT);
-    _feed = pin;
+void Servo::setFeed(int pin, int min, int max) {
+
+    if(this->servoIndex < MAX_SERVOS ) {
+       pinMode(pin, INPUT);
+       servos[this->servoIndex].Feed.feedPin.nbr = pin;
+	   servos[this->servoIndex].Feed.feedPin.isActive = true;
+	   servos[this->servoIndex].Feed.maxFeed = max;
+	   servos[this->servoIndex].Feed.minFeed = min;
+    }
 	
 }
 
@@ -370,6 +389,7 @@ bool Servo::attached()
 {
   return servos[this->servoIndex].Pin.isActive ;
 }
+
 
 
   
