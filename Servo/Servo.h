@@ -38,17 +38,19 @@
  Servo - Class for manipulating servo motors connected to Arduino pins.
  
  
- attach(pin )               - Attaches a servo motor to an i/o pin.
- attach(pin, min, max  )    - Attaches to a pin setting min and max values in microseconds //default min is 544, max is 2400  
- setFeed(pin)               - Sets a servo position feedback pin on any analog pin.
- setFeed(pin, min, max)     - Sets a servo position feedback pin on any analog pin and sets the minimum and maximum values on the internal potentiometer.
- write()                    - Sets the servo angle in degrees.  (invalid angle that is valid as pulse in microseconds is treated as microseconds)
- writeMicroseconds()        - Sets the servo pulse width in microseconds 
- read()                     - Gets the last written servo pulse width as an angle between 0 and 180. 
- readMicroseconds()         - Gets the last written servo pulse width in microseconds. (was read_us() in first release)
- attached()                 - Returns true if there is a servo attached. 
- detach()                   - Stops an attached servos from pulsing its i/o pin.
- getPos()                   - Gets position feedback from a servo's internal potentiometer and returns a output in degrees.
+ attach(pin )              				 - Attaches a servo motor to an i/o pin.
+ attach(pin, min, max  )   				 - Attaches to a pin setting min and max values in microseconds //default min is 544, max is 2400  
+ setFeed(pin)              				 - Sets a servo position feedback pin on any analog pin.
+ setFeed(pin, min, max)    				 - Sets a servo position feedback pin on any analog pin and sets the minimum and maximum values on the internal potentiometer.
+ write()                  			     - Sets the servo angle in degrees.  (invalid angle that is valid as pulse in microseconds is treated as microseconds)
+ write(value,speed)                  	 - Sets the servo angle and speed.
+ write(value,speed,waitToComplete)		 - Sets the servo angle and speed with wait to complete function.
+ writeMicroseconds()       				 - Sets the servo pulse width in microseconds 
+ read()                  			     - Gets the last written servo pulse width as an angle between 0 and 180. 
+ readMicroseconds()      			     - Gets the last written servo pulse width in microseconds. (was read_us() in first release)
+ attached()              			     - Returns true if there is a servo attached. 
+ detach()                                - Stops an attached servos from pulsing its i/o pin.
+ getPos()                                - Gets position feedback from a servo's internal potentiometer and returns a output in degrees.
  
 */
 
@@ -67,16 +69,17 @@
  */
 
 // Say which 16 bit timers can be used and in what order
-#if defined(__AVR_ATmega1280__) || defined(__AVR_ATmega2560__)
+#if defined(__AVR_ATmega1280__)  || defined(__AVR_ATmega2560__)
 #define _useTimer5
 #define _useTimer1 
 #define _useTimer3
 #define _useTimer4 
 typedef enum { _timer5, _timer1, _timer3, _timer4, _Nbr_16timers } timer16_Sequence_t ;
 
-#elif defined(__AVR_ATmega32U4__)  
+#elif defined(__AVR_ATmega32U4__)
+#define _useTimer3  
 #define _useTimer1 
-typedef enum { _timer1, _Nbr_16timers } timer16_Sequence_t ;
+typedef enum { _timer3, _timer1, _Nbr_16timers } timer16_Sequence_t ;
 
 #elif defined(__AVR_AT90USB646__) || defined(__AVR_AT90USB1286__)
 #define _useTimer3
@@ -121,32 +124,37 @@ typedef struct {
   ServoPin_t Pin;
   unsigned int ticks;
   feedback_t Feed;
-  
+  unsigned int target;			
+  uint8_t speed;	
 } servo_t;
+
 
 class Servo
 {
 public:
 
   Servo();
-  uint8_t attach(int pin);           // Attach the given pin to the next free channel, sets pinMode, returns channel number or 0 if failure
-  uint8_t attach(int pin, int min, int max);  // as above but also sets min and max values for writes. 
-  void detach();
-  int getPos();                      // Gets the feedback from servos using analog input.   
-  void setFeed(int pin);             // Sets a i/o pin as the analog feedback input pin.
-  void setFeed(int pin, int min, int max);	// Sets a i/o pin as the analog feedback pin and sets the minimum and maximum voltage values in the wiper wire.
-  void write(int value);             // If value is < 200 its treated as an angle, otherwise as pulse width in microseconds 
-  void writeMicroseconds(int value); // Write pulse width in microseconds 
-  int read();                        // Returns current pulse width as an angle between 0 and 180 degrees
-  int readMicroseconds();            // Returns current pulse width in microseconds for this servo (was read_us() in first release)
-  bool attached();                   // Return true if this servo is attached, otherwise false 
-  
+  uint8_t attach(int pin);                         // Attach the given pin to the next free channel, sets pinMode, returns channel number or 0 if failure
+  uint8_t attach(int pin, int min, int max);       // As above but also sets min and max values for writes. 
+  void detach();                            	   // Detaches the Servo
+  int getPos();                             	   // Gets the feedback from servos using analog input.   
+  void setFeed(int pin);                    	   // Sets a i/o pin as the analog feedback input pin.
+  void setFeed(int pin, int min, int max);		   // Sets a i/o pin as the analog feedback pin and sets the minimum and maximum voltage values in the wiper wire.
+  void write(int value);                     	   // If value is < 200 its treated as an angle, otherwise as pulse width in microseconds 
+  void write(int value, uint8_t speed); 		   // Modified Write function with Speed control.
+  void write(int value, uint8_t speed, bool wait); // Modified Write function with Speed control and Wait to complete function.
+  void writeMicroseconds(int value);			   // Write pulse width in microseconds 
+  int read();                      				   // Returns current pulse width as an angle between 0 and 180 degrees
+  int readMicroseconds();        			       // Returns current pulse width in microseconds for this servo (was read_us() in first release)
+  bool attached();                                 // Return true if this servo is attached, otherwise false 
+  void stop();                                     // Stops the servo instantly.
+
 private:
 
-   uint8_t servoIndex;               // index into the channel data for this servo
-   int8_t min;                       // minimum is this value times 4 added to MIN_PULSE_WIDTH    
-   int8_t max;                       // maximum is this value times 4 added to MAX_PULSE_WIDTH 
-   
+   uint8_t servoIndex;                             // index into the channel data for this servo
+   int8_t min;                                     // minimum is this value times 4 added to MIN_PULSE_WIDTH    
+   int8_t max;                                     // maximum is this value times 4 added to MAX_PULSE_WIDTH 
+
      
 };
 

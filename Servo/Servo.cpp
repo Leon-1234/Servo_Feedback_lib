@@ -55,6 +55,7 @@
 #include <avr/interrupt.h>
 #include <Arduino.h> 
 
+
 #include "Servo.h"
 
 #define usToTicks(_us)    (( clockCyclesPerMicrosecond()* _us) / 8)     // converts microseconds to tick (assumes prescale of 8)  // 12 Aug 2009
@@ -70,7 +71,6 @@ static servo_t servos[MAX_SERVOS];                          // static array of s
 static volatile int8_t Channel[_Nbr_16timers ];             // counter for the servo being pulsed for each timer (or -1 if refresh interval)
 
 uint8_t ServoCount = 0;                                     // the total number of attached servos
-
 
 
 
@@ -97,6 +97,22 @@ static inline void handle_interrupts(timer16_Sequence_t timer, volatile uint16_t
 
   Channel[timer]++;    // increment to the next channel
   if( SERVO_INDEX(timer,Channel[timer]) < ServoCount && Channel[timer] < SERVOS_PER_TIMER) {
+     if (SERVO(timer,Channel[timer]).speed) {
+		if (SERVO(timer,Channel[timer]).target > SERVO(timer,Channel[timer]).ticks) {
+			SERVO(timer,Channel[timer]).ticks += SERVO(timer,Channel[timer]).speed;
+			if (SERVO(timer,Channel[timer]).target <= SERVO(timer,Channel[timer]).ticks) {
+				SERVO(timer,Channel[timer]).ticks = SERVO(timer,Channel[timer]).target;
+				SERVO(timer,Channel[timer]).speed = 0;
+			}
+		}
+		else {
+			SERVO(timer,Channel[timer]).ticks -= SERVO(timer,Channel[timer]).speed;
+			if (SERVO(timer,Channel[timer]).target >= SERVO(timer,Channel[timer]).ticks) {
+				SERVO(timer,Channel[timer]).ticks = SERVO(timer,Channel[timer]).target;
+				SERVO(timer,Channel[timer]).speed = 0;
+			}
+		}
+	}
     *OCRnA = *TCNTn + SERVO(timer,Channel[timer]).ticks;
     if(SERVO(timer,Channel[timer]).Pin.isActive == true)     // check if activated
       digitalWrite( SERVO(timer,Channel[timer]).Pin.nbr,HIGH); // its an active channel so pulse it high   
@@ -261,6 +277,7 @@ Servo::Servo()
   if( ServoCount < MAX_SERVOS) {
     this->servoIndex = ServoCount++;                    // assign a servo index to this instance
 	servos[this->servoIndex].ticks = usToTicks(DEFAULT_PULSE_WIDTH);   // store default values  - 12 Aug 2009
+
   }
   else
     this->servoIndex = INVALID_SERVO ;  // too many servos 
@@ -326,7 +343,54 @@ void Servo::writeMicroseconds(int value)
     cli();
     servos[channel].ticks = value;  
     SREG = oldSREG;   
+    servos[channel].speed = 0;
   } 
+}
+
+void Servo::write(int value, uint8_t speed) {
+
+	if (speed) {
+		if (value < MIN_PULSE_WIDTH) {
+			// treat values less than 544 as angles in degrees (valid values in microseconds are handled as microseconds)
+      		
+      		value = constrain(value, 0, 180);
+      		value = map(value, 0, 180, SERVO_MIN(),  SERVO_MAX());    
+		}
+		// calculate and store the values for the given channel
+		byte channel = this->servoIndex;
+		if( (channel >= 0) && (channel < MAX_SERVOS) ) {   // ensure channel is valid
+      		
+      		value = constrain(value, SERVO_MIN(), SERVO_MAX());
+
+			value = value - TRIM_DURATION;
+			value = usToTicks(value);  // convert to ticks after compensating for interrupt overhead - 12 Aug 2009
+			
+			uint8_t oldSREG = SREG;
+			cli();
+			servos[channel].target = value;  
+			servos[channel].speed = speed;  
+			SREG = oldSREG;   
+		}
+	} 
+	else {
+		write (value);
+	}
+}
+
+void Servo::write(int value, uint8_t speed, bool wait) {
+    write(value,speed);
+    if (wait) { 
+      if (value < MIN_PULSE_WIDTH) {
+         while (read() != value) {
+            delay(5);
+         }
+       } 
+	   else {
+         while (readMicroseconds() != value) {
+          delay(5);
+         }
+       }
+    }
 }
 
 int Servo::getPos() {           //Takes Servo Feedback and filters the output as degrees.
@@ -389,6 +453,18 @@ bool Servo::attached()
 {
   return servos[this->servoIndex].Pin.isActive ;
 }
+
+void Servo::stop()
+{
+  write(read());
+}
+  
+
+
+
+
+
+
 
 
 
