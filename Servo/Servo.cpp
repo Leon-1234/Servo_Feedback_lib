@@ -399,9 +399,21 @@ int Servo::getPos() {           //Takes Servo Feedback and filters the output as
     if( (this->servoIndex < MAX_SERVOS) )   // ensure channel is valid
     { 
 	  inFeed = analogRead(servos[this->servoIndex].Feed.feedPin.nbr);
-	  constrain(inFeed, servos[this->servoIndex].Feed.minFeed, servos[this->servoIndex].Feed.maxFeed);
+	  if( inFeed > servos[this->servoIndex].Feed.maxFeed) {
+	      inFeed = servos[this->servoIndex].Feed.maxFeed;
+	  }
+	  if( inFeed < servos[this->servoIndex].Feed.minFeed) {
+	      inFeed = servos[this->servoIndex].Feed.minFeed;
+	  }
+	  
 	  inFeed = map(inFeed, servos[this->servoIndex].Feed.minFeed, servos[this->servoIndex].Feed.maxFeed, 0, 180);
-	  constrain(inFeed,0,180);
+	  
+	  if( inFeed > 180) {
+	      inFeed = 180;
+	  }
+	  if( inFeed < 0) {
+	      inFeed = 0;
+	  }
       servos[this->servoIndex].Feed.fdvalue = inFeed;
 	  return servos[this->servoIndex].Feed.fdvalue;
 	}
